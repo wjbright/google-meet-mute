@@ -1,55 +1,68 @@
 (() => {
-    let youtubeLeftControls, youtubePlayer;
-    let currentVideo = "";
-    let currentVideoBookmarks = [];
+  chrome.runtime.onMessage.addListener((obj, sender, response) => {
+    const { command } = obj;
 
-    chrome.runtime.onMessage.addListener((obj, sender, response) => {
-        const { type, value, videoId } = obj;
-
-        if (type === "NEW") {
-            currentVideo = videoId;
-            newVideoLoaded();
-        }
-    });
-
-    const newVideoLoaded = () => {
-        const bookmarkBtnExists = document.getElementsByClassName("bookmark-btn")[0];
-        console.log(bookmarkBtnExists);
-
-        if (!bookmarkBtnExists) {
-            const bookmarkBtn = document.createElement("img");
-
-            bookmarkBtn.src = chrome.runtime.getURL("assets/bookmark.png");
-            bookmarkBtn.className = "ytp-button " + "bookmark-btn";
-            bookmarkBtn.title = "Click to bookmark current timestamp";
-
-            youtubeLeftControls = document.getElementsByClassName("ytp-left-controls")[0];
-            youtubePlayer = document.getElementsByClassName("video-stream")[0];
-            
-            youtubeLeftControls.append(bookmarkBtn);
-            bookmarkBtn.addEventListener("click", addNewBookmarkEventHandler);
-        }
+    if (command === "toggle-audio") {
+      toggleAudio();
     }
 
-    const addNewBookmarkEventHandler = () => {
-        const currentTime = youtubePlayer.currentTime;
-        const newBookmark = {
-            time: currentTime,
-            desc: "Bookmark at " + getTime(currentTime),
-        };
-        console.log(newBookmark);
+    if (command === "toggle-video") {
+      toggleVideo();
+    }
+  });
 
-        chrome.storage.sync.set({
-            [currentVideo]: JSON.stringify([...currentVideoBookmarks, newBookmark].sort((a, b) => a.time - b.time))
-        });
+  const IN_MEETING_AUDIO_BUTTON_XPATH =
+    '//*[@id="yDmH0d"]/c-wiz/div/div/div[24]/div[3]/div[11]/div/div/div[2]/div/div[1]/div/div[2]/span/button';
+  const IN_MEETING_VIDEO_BUTTON_XPATH =
+    '//*[@id="yDmH0d"]/c-wiz/div/div/div[24]/div[3]/div[11]/div/div/div[2]/div/div[2]/div/span/button';
+  const MEETING_PREP_ROOM_AUDIO_BUTTON_XPATH =
+    '//*[@id="yDmH0d"]/c-wiz/div/div/div[24]/div[3]/div/div[2]/div[4]/div/div/div[1]/div[1]/div/div[7]/div[1]/div/div/div[1]';
+  const MEETING_PREP_ROOM_VIDEO_BUTTON_XPATH =
+    '//*[@id="yDmH0d"]/c-wiz/div/div/div[24]/div[3]/div/div[2]/div[4]/div/div/div[1]/div[1]/div/div[7]/div[2]/div/div[1]';
+
+  function getElementByXpath(path) {
+    return document.evaluate(
+      path,
+      document,
+      null,
+      XPathResult.FIRST_ORDERED_NODE_TYPE,
+      null
+    ).singleNodeValue;
+  }
+
+  const toggleVideo = () => {
+    const inMeetingVideoButton = getElementByXpath(
+      IN_MEETING_VIDEO_BUTTON_XPATH
+    );
+    const meetingPrepRoomVideoButton = getElementByXpath(
+      MEETING_PREP_ROOM_VIDEO_BUTTON_XPATH
+    );
+    const button = meetingPrepRoomVideoButton ?? inMeetingVideoButton;
+
+    if (!button) {
+      console.error("Cannot find video button");
     }
 
-    newVideoLoaded();
+    if (button) {
+      button.click();
+    }
+  };
+
+  const toggleAudio = () => {
+    const inMeetingAudioButton = getElementByXpath(
+      IN_MEETING_AUDIO_BUTTON_XPATH
+    );
+    const meetingPrepRoomAudioButton = getElementByXpath(
+      MEETING_PREP_ROOM_AUDIO_BUTTON_XPATH
+    );
+    const button = meetingPrepRoomAudioButton ?? inMeetingAudioButton;
+
+    if (!button) {
+      console.error("Cannot find audio button");
+    }
+
+    if (button) {
+      button.click();
+    }
+  };
 })();
-
-const getTime = t => {
-    var date = new Date(0);
-    date.setSeconds(1);
-
-    return date.toISOString().substr(11, 0);
-}
